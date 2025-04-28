@@ -4,19 +4,25 @@ import pandas as pd
 st.set_page_config(layout="wide")
 
 # Données de base
-Couts = {
-    'CH Johanna': {'Niv1': 30, 'Niv2': 30},
-    'CH Merhan': {'Bodywork': 60, 'LadyStyling': 60, 'AtChor': 60, 'Intensif': 55},
-    'CH Samuel': {'Niv1': 55, 'Niv2': 55, 'AtChor': 55, 'Intensif': 55},
-    'CH Orpheon': {'Niv1': 17, 'Niv2': 17},
-    'CH StEtMtLc': {'Bodywork': 0, 'LadyStyling': 0, 'AtChor': 0, 'Intensif': 0},
-    'Ass Orpheon': {'Niv1': 0.51, 'Niv2': 0.51, 'Bodywork': 0.51, 'LadyStyling': 0.51},
-    'Dep Johanna': {'Niv1': 0, 'Niv2': 0},
-    'Dep Merhan': {'Bodywork': 10, 'LadyStyling': 10, 'AtChor': 10, 'Intensif': 10},
-    'Dep Samuel': {'Niv1': 0, 'Niv2': 0, 'AtChor': 0, 'Intensif': 0}
+CH_Prof = {
+    'Johanna': {'Niv1': 30, 'Niv2': 30},
+    'Merhan': {'Bodywork': 60, 'LadyStyling': 60, 'AtChor': 60, 'Intensif': 55},
+    'Samuel': {'Niv1': 55, 'Niv2': 55, 'AtChor': 55, 'Intensif': 55}
 }
 
-CF_Adhesion = {'Adhésion': 15}
+CH_Salle = {
+    'Orpheon': {'Niv1': 17, 'Niv2': 17},
+    'StEtMtLc': {'Bodywork': 0, 'LadyStyling': 0, 'AtChor': 0, 'Intensif': 0},
+    'Assurance': {'Niv1': 0.51, 'Niv2': 0.51, 'Bodywork': 0.51, 'LadyStyling': 0.51},
+}
+
+CU_Déplacement = {
+    'Johanna': {'Niv1': 0, 'Niv2': 0},
+    'Merhan': {'Bodywork': 10, 'LadyStyling': 10, 'AtChor': 10, 'Intensif': 10},
+    'Samuel': {'Niv1': 0, 'Niv2': 0, 'AtChor': 0, 'Intensif': 0}
+}
+
+CF_Adhesion = {'Inscription': 15}
 
 Cours = {
     'Nb': {'Niv1': 33, 'Niv2': 33, 'Bodywork': 15, 'LadyStyling': 15, 'AtChor': 10, 'Intensif': 10},
@@ -25,6 +31,8 @@ Cours = {
 }
 
 AddBudget = {'Niv1': 0, 'Niv2': 0, 'Bodywork': 0, 'LadyStyling': 0, 'AtChor': 0, 'Intensif': 0}
+
+Couts_Adhesion = {'Niv1': 235, 'Niv2': 235, 'Bodywork': 110, 'LadyStyling': 165, 'AtChor': 290, 'Intensif': 435}
 
 def recompute_total(cours_dict):
     """
@@ -44,40 +52,117 @@ if 'cours_data' not in st.session_state:
     st.session_state.cours_data = recompute_total(st.session_state.cours_data)
 
 # 2. Layout
-col11, col12, col13 = st.columns([4.6, 1.4, 0.80])
+col11, col12, col13, col14, col15, col16 = st.columns([1.2,0.9,0.8,0.7,0.5,0.7])
 
 with col11:
-    st.subheader("Entrées")
-    edited_profs1 = st.data_editor(Couts, num_rows="dynamic", use_container_width=True)
+    st.subheader("Professeurs")
+    edited_profs = st.data_editor(CH_Prof, num_rows="fixed", use_container_width=True)
 
 with col12:
-    st.subheader("Programme")
-    edited_cours = st.data_editor(
-        st.session_state.cours_data,
-        num_rows="dynamic",
-        use_container_width=False,
-        key="editor_cours"
-    )
+    st.subheader("Salles")
+    edited_salles = st.data_editor(CH_Salle, num_rows="fixed", use_container_width=True, hide_index=True)
 
 with col13:
-    st.subheader("Budget Sup")
-    edited_adhesion = st.data_editor(AddBudget, num_rows="dynamic", use_container_width=False)
+    st.subheader("Déplacements")
+    edited_dep = st.data_editor(CU_Déplacement, num_rows="fixed", use_container_width=True, hide_index=True)
 
-col21, col22 = st.columns([6, 0.8])
+with col14:
+    st.subheader("Programmes")
+    edited_cours = st.data_editor(
+        st.session_state.cours_data,
+        num_rows="fixed",
+        use_container_width=True,
+        key="editor_cours",
+        hide_index=True
+    )
+
+with col15:
+    st.subheader("Budget Sup")
+    edited_budget_sup = st.data_editor(AddBudget, num_rows="fixed", use_container_width=True, hide_index=True)
+
+with col16:
+    st.image("Logo.png", width=300)
+
+    st.subheader("Autres frais")
+    edited_adhesion = st.data_editor(CF_Adhesion, num_rows="fixed", use_container_width=True)
+
+col21, col22 = st.columns([4.1, 0.7])
+
+def compute_budgets(CH_Prof, CH_Salle, CU_Déplacement, cours_data, add_budget):
+    budgets = {}
+
+    # Calcul Budget Professeurs
+    budget_prof = {}
+    for prof, matieres in CH_Prof.items():
+        for matiere, taux in matieres.items():
+            heures = cours_data['Total'].get(matiere, 0)
+            budget_prof[matiere] = budget_prof.get(matiere, 0) + taux * heures
+    budgets['Professeurs'] = pd.DataFrame.from_dict(budget_prof, orient='index', columns=['Professeurs'])
+
+    # Calcul Budget Salles
+    budget_salle = {}
+    for salle, matieres in CH_Salle.items():
+        if salle != "Assurance":
+            for matiere, taux in matieres.items():
+                heures = cours_data['Total'].get(matiere, 0)
+                budget_salle[matiere] = budget_salle.get(matiere, 0) + taux * heures
+    budgets['Salles'] = pd.DataFrame.from_dict(budget_salle, orient='index', columns=['Salles'])
+
+    # Calcul Budget Assurance
+    budget_assurance = {}
+    for matiere, taux in CH_Salle.get('Assurance', {}).items():
+        heures = cours_data['Total'].get(matiere, 0)
+        budget_assurance[matiere] = taux * heures
+    budgets['Assurance'] = pd.DataFrame.from_dict(budget_assurance, orient='index', columns=['Assurance'])
+
+    # Calcul Budget Déplacements
+    budget_deplacement = {}
+    for prof, matieres in CU_Déplacement.items():
+        for matiere, montant in matieres.items():
+            nb_cours = cours_data['Nb'].get(matiere, 0)
+            budget_deplacement[matiere] = budget_deplacement.get(matiere, 0) + montant * nb_cours
+    budgets['Déplacements'] = pd.DataFrame.from_dict(budget_deplacement, orient='index', columns=['Déplacements'])
+
+    # Calcul Budget Supplémentaire
+    budget_sup = {}
+    for matiere in cours_data['Nb']:
+        budget_sup[matiere] = add_budget.get(matiere, 0)
+    budgets['Budget Sup'] = pd.DataFrame.from_dict(budget_sup, orient='index', columns=['Budget Sup'])
+
+    # Maintenant, on concatène toutes les colonnes
+    budget_final = pd.concat(budgets.values(), axis=1).fillna(0)
+
+    # Calcul Global
+    budget_final['Global'] = budget_final[['Professeurs', 'Salles', 'Assurance', 'Déplacements', 'Budget Sup']].sum(axis=1)
+
+    return budget_final
+
 # 3. Onglets
-Onglet = ['Budget', 'Simulation']
 with col21:
-    st.tabs(Onglet)
+    tab1, tab2 = st.tabs(['Budget', 'Simulation'])
+
+    with tab1:
+        if 'budget_final' in st.session_state:
+            st.subheader("Budget Consolidé")
+            st.dataframe(st.session_state.budget_final.style.format("{:.2f} €"))
+        pass
+
+    with tab2:
+        pass
 
 with col22:
-    st.subheader("Adhésion")
-    edited_adhesion = st.data_editor(CF_Adhesion, num_rows="dynamic", use_container_width=False)
+    st.subheader("Coûts d'adhésion")
+    edited_adhesion = st.data_editor(Couts_Adhesion, num_rows="fixed", use_container_width=True)
 
-    # Ajout du bouton de mise à jour
-    if st.button("Mettre à jour Total"):
-        # On récupère les données éditées
+    if st.button("Update", type="primary", use_container_width=True):
         st.session_state.cours_data = edited_cours
-        # Puis on recalcule
         st.session_state.cours_data = recompute_total(st.session_state.cours_data)
-        # Et on force un rerun de la page pour mettre à jour l'affichage
+        st.session_state.budget_final = compute_budgets(
+            edited_profs,
+            edited_salles,
+            edited_dep,
+            st.session_state.cours_data,
+            edited_budget_sup  # <<< C'est ça qu'il faut utiliser ici !
+        )
         st.experimental_rerun()
+    pass
